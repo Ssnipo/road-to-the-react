@@ -6,9 +6,6 @@ const PATH_BASE = 'https://hn.algolia.com/api/v1';
 const PATH_SEARCH = '/search';
 const PARAM_SEARCH = 'query=';
 
-const isSearched = searchTerm => item =>
-	item.title.toLowerCase().includes(searchTerm.toLowerCase());
-
 class App extends Component {
 	constructor(props) {
 		super(props);
@@ -21,11 +18,14 @@ class App extends Component {
 
 	componentDidMount() {
 		const { searchTerm } = this.state;
+		this.fetchSearchTopStories(searchTerm);
+	}
+
+	fetchSearchTopStories = searchTerm => 
 		fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}`)
 			.then(response => response.json())
 			.then(result => this.setSearchTopStories(result))
 			.catch(error => error);
-	}
 
 	onDismiss = id => {
 		const isNotId = item => item.objectID !== id;
@@ -40,46 +40,53 @@ class App extends Component {
 		this.setState({ searchTerm: event.target.value });
 	}
 
+	onSearchSubmit = event => {
+		const {searchTerm} = this.state;
+		this.fetchSearchTopStories(searchTerm);
+		event.preventDefault();
+	}
+
 	setSearchTopStories = result => {
 		this.setState({ result });
 	}
 
 	render() {
-		const { result, searchTerm } = this.state;
-
-		if (!result) { return null; }
+		const { result, searchTerm } = this.state; 
 
 		return (
 			<div className="page">
 				<div className="interactions">
 					<Search
 						value={searchTerm}
-						onChange={this.onSearchChange}>
+						onChange={this.onSearchChange}
+						onSubmit={this.onSearchSubmit}>
 						Search
 					</Search>
 				</div>
-				<Table
-					list={result.hits}
-					pattern={searchTerm}
-					onDismiss={this.onDismiss}
-				/>
+				{ result &&
+					<Table
+						list={result.hits}
+						onDismiss={this.onDismiss}
+					/>
+				}
 			</div>
 		);
 	}
 }
 
-const Search = ({ value, onChange, children }) =>
-	<form>
+const Search = ({ value, onChange, onSubmit, children }) =>
+	<form onSubmit={onSubmit}>
 		{children}
 		<input type="text" value={value} onChange={onChange} />
+		<button type="submit">{children}</button>
 	</form>
 
-const Table = ({ list, pattern, onDismiss }) => {
+const Table = ({ list, onDismiss }) => {
 	const largeColumn = { width: '40%' },
 		midColumn = { width: '30%' },
 		smallColumn = { width: '10%' };
 	return (<div className="table">
-		{list.filter(isSearched(pattern)).map(item =>
+		{list.map(item =>
 			<div key={item.objectID} className="table-row">
 				<span style={largeColumn}>
 					<a href={item.url}>{item.title}</a>
